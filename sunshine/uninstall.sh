@@ -2,8 +2,8 @@
 
 # --- Configuration ---
 SERVICE_DIR="/userdata/system/services"
-SERVICE_NAME="Sunshine"
-FLATPAK_ID="dev.lizardbyte.sunshine"
+SERVICE_NAME="sunshine"
+FLATPAK_ID="dev.lizardbyte.app.Sunshine"
 
 echo "--- Batocera Sunshine Uninstaller ---"
 
