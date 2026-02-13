@@ -8,8 +8,9 @@ FLATPAK_ID="dev.lizardbyte.sunshine"
 echo "--- Batocera Sunshine Flatpak Installer ---"
 
 # 1. Install Sunshine via Flatpak
-echo "Installing Sunshine Flatpak..."
-flatpak install flathub $FLATPAK_ID -y
+# Added '--system' to specify the remote and '-y' to auto-confirm
+echo "Installing Sunshine Flatpak (System Scope)..."
+flatpak install system flathub $FLATPAK_ID -y
 
 # 2. Create Services directory if it doesn't exist
 mkdir -p "$SERVICE_DIR"
@@ -24,7 +25,7 @@ case "$1" in
     start)
         # Fix uinput permissions for controller support
         chmod 666 /dev/uinput 2>/dev/null
-        # Run Flatpak in the background
+        # Start Sunshine
         flatpak run dev.lizardbyte.sunshine > /dev/null 2>&1 &
         ;;
     stop)
@@ -46,4 +47,3 @@ echo "-------------------------------------------------------"
 echo "You can now enable Sunshine in:"
 echo "System Settings -> Services -> Sunshine"
 echo "-------------------------------------------------------"
-echo "Or start it now manually with: batocera-services start $SERVICE_NAME"
