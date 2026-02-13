@@ -2,15 +2,15 @@
 
 # --- Configuration ---
 SERVICE_DIR="/userdata/system/services"
-SERVICE_NAME="Sunshine"
-FLATPAK_ID="dev.lizardbyte.sunshine"
+SERVICE_NAME="sunshine"
+FLATPAK_ID="dev.lizardbyte.app.Sunshine"
 
 echo "--- Batocera Sunshine Flatpak Installer ---"
 
 # 1. Install Sunshine via Flatpak
-# Added '--system' to specify the remote and '-y' to auto-confirm
-echo "Installing Sunshine Flatpak (System Scope)..."
-flatpak install system flathub $FLATPAK_ID -y
+# We force '--system' and '--noninteractive' to bypass the choice prompt
+echo "Checking/Installing Sunshine Flatpak (System Scope)..."
+flatpak install --system --noninteractive flathub $FLATPAK_ID -y
 
 # 2. Create Services directory if it doesn't exist
 mkdir -p "$SERVICE_DIR"
@@ -23,10 +23,10 @@ cat << 'EOF' > "$SERVICE_DIR/$SERVICE_NAME"
 
 case "$1" in
     start)
-        # Fix uinput permissions for controller support
+        # Ensure uinput is accessible for controllers
         chmod 666 /dev/uinput 2>/dev/null
-        # Start Sunshine
-        flatpak run dev.lizardbyte.sunshine > /dev/null 2>&1 &
+        # Run Flatpak in the background
+        flatpak run dev.lizardbyte.app.Sunshine > /dev/null 2>&1 &
         ;;
     stop)
         pkill -f sunshine
@@ -44,6 +44,7 @@ chmod +x "$SERVICE_DIR/$SERVICE_NAME"
 # 5. Finalize
 echo "Installation complete!"
 echo "-------------------------------------------------------"
-echo "You can now enable Sunshine in:"
-echo "System Settings -> Services -> Sunshine"
+echo "1. Restart EmulationStation (or reboot)"
+echo "2. Go to: System Settings -> Services -> Sunshine"
+echo "3. Toggle it ON"
 echo "-------------------------------------------------------"
