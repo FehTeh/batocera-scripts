@@ -24,6 +24,8 @@ Go to System Settings > Services.
 
 Toggle Sunshine to ON.
 
+Go to https://<batocera-ip>:47990 to continue configuration
+
 ## 🗑 Uninstallation
 To remove the Flatpak and the service script:
 
