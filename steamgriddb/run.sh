@@ -10,69 +10,71 @@ if [ -z "$API_KEY" ]; then
     exit 1
 fi
 
-[ ! -f "$GAMELIST" ] && echo "Error: gamelist.xml not found in $ROM_DIR" && exit 1
-
+[ ! -f "$GAMELIST" ] && echo "Error: gamelist.xml not found" && exit 1
 mkdir -p "$IMG_DIR"
 cd "$ROM_DIR" || exit
 
-# Function to update gamelist.xml for a specific tag
+# Function to safely insert tags into the XML
 update_xml_tag() {
     local game_path=$1
     local tag=$2
     local img_path=$3
     
     echo "   * Adding <$tag> to gamelist.xml"
-    # Escaping path for sed
+    # Escaping for sed (handles spaces and dots)
     local escaped_path=$(echo "$game_path" | sed 's/[^^]/[&]/g; s/\^/\\^/g')
-    sed -i "/<path>${escaped_path}<\/path>/,/<\/game>/ s/<\/game>/    <$tag>$img_path<\/$tag>\n        <\/game>/" "$GAMELIST"
+    
+    # This finds the block for the specific game and inserts the tag before the closing </game>
+    sed -i "/<path>${escaped_path}<\/path>/,/<\/game>/ s/<\/game>/\t\t<$tag>$img_path<\/$tag>\n\t<\/game>/" "$GAMELIST"
 }
 
-# --- Main Logic ---
+# 1. Extract all paths using sed to ignore leading tabs/spaces
+paths=$(sed -n 's/.*<path>\(.*\)<\/path>.*/\1/p' "$GAMELIST")
 
-# 1. Get a list of all <game> blocks from gamelist.xml
-# We use a temporary file to store the paths of games that need checking
-grep -oP '(?<=<path>).*?(?=</path>)' "$GAMELIST" | while read -r game_path; do
-    
-    # Only process .steam files
+echo "$paths" | while read -r game_path; do
+    # Clean hidden Windows characters
+    game_path=$(echo "$game_path" | tr -d '\r')
+
+    # Filters
+    [[ -z "$game_path" ]] && continue
     [[ "$game_path" != *".steam" ]] && continue
     [[ "$game_path" == *"Steam.steam" ]] && continue
 
-    echo "Checking $game_path"
+    echo "Checking $game_path..."
 
-    # 2. Check if this specific game block is missing any tags
-    # We grab the block (approx 20 lines) and check for tags
-    game_block=$(grep -A 20 "<path>$game_path</path>" "$GAMELIST")
+    # 2. Grab the specific game block (matching exactly the path provided)
+    # We use grep with the variable to find the context
+    game_block=$(grep -A 15 "<path>$game_path</path>" "$GAMELIST")
     
+    # Check for missing tags
     missing_image=$(echo "$game_block" | grep -q "<image>" || echo "yes")
     missing_thumb=$(echo "$game_block" | grep -q "<thumbnail>" || echo "yes")
     missing_marquee=$(echo "$game_block" | grep -q "<marquee>" || echo "yes")
 
     if [ "$missing_image" != "yes" ] && [ "$missing_thumb" != "yes" ] && [ "$missing_marquee" != "yes" ]; then
-        echo "   * No image missing. Continue"
+        echo "   - Entry complete. Skipping."
         continue
     fi
 
-    # 3. Resolve actual filename and AppID
-    # game_path is usually ./Name.steam, we need the real file to get the ID
+    # 3. Get AppID from the local file
     real_file=$(echo "$game_path" | sed 's|^\./||')
-    if [ ! -f "$real_file" ]; then continue; fi
-    
     app_id=$(grep -oP '(?<=steam://rungameid/)\d+' "$real_file")
-    [ -z "$app_id" ] && continue
+    
+    if [ -z "$app_id" ]; then
+        echo "   ! No AppID found in $real_file"
+        continue
+    fi
 
-    game_prefix="${real_file%.*}"
-    echo "Incomplete entry found: $game_prefix (AppID: $app_id)"
-
-    # 4. Fetch SteamGridDB ID
+    # 4. SteamGridDB API Call
     search_res=$(curl -s -f -H "Authorization: Bearer $API_KEY" "https://www.steamgriddb.com/api/v2/games/steam/$app_id")
     db_id=$(echo "$search_res" | grep -oP '(?<="id":)\d+' | head -n 1)
 
     if [ -z "$db_id" ]; then
-        echo "   X No match on SteamGridDB"
+        echo "   X No match on SteamGridDB for $game_path"
         continue
     fi
 
-    # 5. Internal Download Helper
+    # 5. Asset Fetcher
     fetch_asset() {
         local endpoint=$1 # grids, heroes, logos
         local tag=$2      # image, thumbnail, marquee
@@ -85,6 +87,7 @@ grep -oP '(?<=<path>).*?(?=</path>)' "$GAMELIST" | while read -r game_path; do
             if [ -n "$url" ]; then
                 ext="${url##*.}"
                 ext="${ext%%\?*}" 
+                game_prefix="${real_file%.*}"
                 target_file="${IMG_DIR}/${game_prefix}${label}.${ext}"
                 rel_path="./images/${game_prefix}${label}.${ext}"
 
@@ -104,4 +107,4 @@ grep -oP '(?<=<path>).*?(?=</path>)' "$GAMELIST" | while read -r game_path; do
 
 done
 
-echo "Done! Restart EmulationStation to see changes."
+echo "Done!"
