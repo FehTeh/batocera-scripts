@@ -70,6 +70,7 @@ for file in *.steam; do
             if [ -f "$target_file" ]; then
                 echo "   - $label already exists in images/. Skipping."
             else
+                echo " Downloading from $url"
                 curl -s -L -o "$target_file" "$url"
                 echo "   + Downloaded images/$(basename "$target_file")"
             fi
