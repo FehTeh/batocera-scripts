@@ -57,22 +57,34 @@ for file in *.steam; do
     fetch() {
         local endpoint=$1
         local label=$2
+        local exists=$(check_exists "$game_prefix" "$label")
+
+        if [ "$exists" -gt 0 ]; then
+            echo "   - $label exists. Skipping."
+            return
+        fi
         
-        url=$(curl -s -X GET "https://www.steamgriddb.com/api/v2/$endpoint/game/$db_id" \
-            -H "Authorization: Bearer $API_KEY" | grep -oP '(?<="url":")[^"]+' | head -n 1)
+        # 1. Get the URL
+        # 2. Use sed to remove the backslashes (unescape)
+        url=$(curl -s -f -H "Authorization: Bearer $API_KEY" \
+            "https://www.steamgriddb.com/api/v2/$endpoint/game/$db_id" | \
+            grep -oP '(?<="url":")[^"]+' | head -n 1 | sed 's/\\//g')
 
         if [ -n "$url" ]; then
             ext="${url##*.}"
             ext="${ext%%\?*}" 
-            # Define target path inside the images folder
             target_file="${IMG_DIR}/${game_prefix}${label}.${ext}"
             
-            if [ -f "$target_file" ]; then
-                echo "   - $label already exists in images/. Skipping."
+            echo "   Downloading from $url to $target_file"
+            
+            # Use -L to follow redirects
+            curl -s -L -o "$target_file" "$url"
+            
+            if [ -s "$target_file" ]; then
+                echo "   + Success: $target_file"
             else
-                echo " Downloading from $url to $target_file"
-                curl -s -L -o "$target_file" "$url"
-                echo "   + Downloaded $target_file"
+                echo "   ! Download failed - file is empty"
+                rm -f "$target_file"
             fi
         fi
     }
