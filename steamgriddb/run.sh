@@ -37,6 +37,8 @@ grep -oP '(?<=<path>).*?(?=</path>)' "$GAMELIST" | while read -r game_path; do
     [[ "$game_path" != *".steam" ]] && continue
     [[ "$game_path" == *"Steam.steam" ]] && continue
 
+    echo "Checking $game_path"
+
     # 2. Check if this specific game block is missing any tags
     # We grab the block (approx 20 lines) and check for tags
     game_block=$(grep -A 20 "<path>$game_path</path>" "$GAMELIST")
@@ -46,6 +48,7 @@ grep -oP '(?<=<path>).*?(?=</path>)' "$GAMELIST" | while read -r game_path; do
     missing_marquee=$(echo "$game_block" | grep -q "<marquee>" || echo "yes")
 
     if [ "$missing_image" != "yes" ] && [ "$missing_thumb" != "yes" ] && [ "$missing_marquee" != "yes" ]; then
+        echo "   * No image missing. Continue"
         continue
     fi
 
